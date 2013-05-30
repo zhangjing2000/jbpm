@@ -33,11 +33,15 @@ import org.kie.api.KieServices;
 import org.kie.api.builder.ReleaseId;
 import org.kie.api.runtime.KieContainer;
 import org.kie.scanner.MavenRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonatype.aether.artifact.Artifact;
 
 @ApplicationScoped
 @Kjar
 public class KModuleDeploymentService extends AbstractDeploymentService {
+
+    private static Logger logger = LoggerFactory.getLogger(KModuleDeploymentService.class);
 
     @Inject
     private BeanManager beanManager;
@@ -83,7 +87,7 @@ public class KModuleDeploymentService extends AbstractDeploymentService {
                     deployedUnit.addAssetLocation(process.getId(), process);
                     
                 } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
+                    logger.warn("Unable to load content for file '" + fileName + "': ", e);
                 }
             } else if (fileName.matches(".+ftl$")) {
                 try {
@@ -96,7 +100,14 @@ public class KModuleDeploymentService extends AbstractDeploymentService {
                     }
                     formsData.put(key, formContent);
                 } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
+                    logger.warn("Unable to load content for form '" + fileName + "': ", e);
+                }
+            } else if (fileName.matches(".+form$")) {
+                try {
+                    String formContent = new String(module.getBytes(fileName), "UTF-8");
+                    formsData.put(fileName, formContent);
+                } catch (UnsupportedEncodingException e) {
+                    logger.warn("Unable to load content for form '" + fileName + "': ", e);
                 }
             }
         }
