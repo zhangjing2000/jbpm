@@ -26,13 +26,17 @@ public class GlobalQuartzRAMTimerServiceTest extends GlobalTimerServiceBaseTest 
     
     public GlobalQuartzRAMTimerServiceTest(int managerType) {
         this.managerType = managerType;
+        
     }
     
     @Before
     public void setUp() {
+        tearDownOnce();
+        setUpOnce();
         cleanupSingletonSessionId();
         System.setProperty("org.quartz.properties", "quartz-ram.properties");
         globalScheduler = new QuartzSchedulerService();
+        ((QuartzSchedulerService)globalScheduler).forceShutdown();
     }
     
     @After
@@ -42,6 +46,7 @@ public class GlobalQuartzRAMTimerServiceTest extends GlobalTimerServiceBaseTest 
         } catch (Exception e) {
             
         }        
+        tearDownOnce();
     }
 
     @Override

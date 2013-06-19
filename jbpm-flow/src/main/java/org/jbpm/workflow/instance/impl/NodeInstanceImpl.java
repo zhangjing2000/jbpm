@@ -63,6 +63,7 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
     private WorkflowProcessInstance processInstance;
     private org.jbpm.workflow.instance.NodeInstanceContainer nodeInstanceContainer;
     private Map<String, Object> metaData = new HashMap<String, Object>();
+    private int level;
 
     public void setId(final long id) {
         this.id = id;
@@ -83,6 +84,14 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
     public String getNodeName() {
     	Node node = getNode();
     	return node == null ? "" : node.getName();
+    }
+    
+    public int getLevel() {
+        return this.level;
+    }
+    
+    public void setLevel(int level) {
+        this.level = level;
     }
 
     public void setProcessInstance(final WorkflowProcessInstance processInstance) {
@@ -124,6 +133,8 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
     	}
     	
     	if (from != null) {
+    	    int level = ((org.jbpm.workflow.instance.NodeInstance)from).getLevel();
+    	    ((org.jbpm.workflow.instance.NodeInstanceContainer)getNodeInstanceContainer()).setCurrentLevel(level);
 	    	Collection<Connection> incoming = getNode().getIncomingConnections(type);
 	    	for (Connection conn : incoming) {
 	    	    if (conn.getFrom().getId() == from.getNodeId()) {
@@ -144,7 +155,7 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
             throw e;
         }
         catch (Exception e) {
-            throw new WorkflowRuntimeException(this, e);
+            throw new WorkflowRuntimeException(this, getProcessInstance(), e);
         }
         if (!hidden) {
         	((InternalProcessRuntime) kruntime.getProcessRuntime())
@@ -171,7 +182,7 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
             ExceptionScopeInstance exceptionScopeInstance = (ExceptionScopeInstance)
                 resolveContextInstance(ExceptionScope.EXCEPTION_SCOPE, exceptionName);
             if (exceptionScopeInstance == null) {
-                throw new WorkflowRuntimeException(this, "Unable to execute Action: " + e.getMessage(), e);
+                throw new WorkflowRuntimeException(this, getProcessInstance(), "Unable to execute Action: " + e.getMessage(), e);
             }
             exceptionScopeInstance.handleException(exceptionName, e);
         }
@@ -186,6 +197,7 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
         List<Connection> connections = null;
         if (node != null) {
         	if (System.getProperty("jbpm.enable.multi.con") != null && ((NodeImpl) node).getConstraints().size() > 0) {
+        	    // TODO: marking multi-inst activities as completed for compensation 
         		int priority = Integer.MAX_VALUE;
         		connections = ((NodeImpl)node).getDefaultOutgoingConnections();
                 boolean found = false;
@@ -242,7 +254,12 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
                 }   
                 return;
         	} else {
-        		connections = node.getOutgoingConnections(type);
+        	    String uniqueId = (String) node.getMetaData().get("UniqueId");
+        	    if( uniqueId == null ) { 
+        	       uniqueId = ((NodeImpl) node).getUniqueId();
+        	    }
+        	    ((WorkflowProcessInstanceImpl) processInstance).addCompletedNodeId(uniqueId);
+        		connections = node.getOutgoingConnections(type); 
         	}
         }
         if (connections == null || connections.isEmpty()) {
@@ -435,8 +452,12 @@ public abstract class NodeInstanceImpl implements org.jbpm.workflow.instance.Nod
     	return result;
     }
     
-	public Map<String, Object> getMetaData() {
-		return this.metaData;
+    public Map<String, Object> getMetaData() {
+        return this.metaData;
+    }
+    
+	public Object getMetaData(String name) {
+		return this.metaData.get(name);
 	}
 
     public void setMetaData(String name, Object data) {

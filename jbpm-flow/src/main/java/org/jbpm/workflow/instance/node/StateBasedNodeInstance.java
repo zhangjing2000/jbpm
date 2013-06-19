@@ -258,6 +258,7 @@ public abstract class StateBasedNodeInstance extends ExtendedNodeInstanceImpl im
     }
     
     public void triggerCompleted() {
+        ((org.jbpm.workflow.instance.NodeInstanceContainer)getNodeInstanceContainer()).setCurrentLevel(getLevel());
         triggerCompleted(org.jbpm.workflow.core.Node.CONNECTION_DEFAULT_TYPE, true);
     }
     
@@ -316,7 +317,7 @@ public abstract class StateBasedNodeInstance extends ExtendedNodeInstanceImpl im
     }
     
     private void removeActivationListener() {
-        getProcessInstance().addEventListener(getActivationType(), this, true);
+        getProcessInstance().removeEventListener(getActivationType(), this, true);
     }
     
     protected boolean checkProcessInstance(Activation activation) {

@@ -16,7 +16,15 @@
 
 package org.jbpm.workflow.instance.node;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jbpm.process.core.context.variable.VariableScope;
 import org.jbpm.process.instance.context.variable.VariableScopeInstance;
@@ -64,6 +72,7 @@ public class JoinInstance extends NodeInstanceImpl {
                 if (checkAllActivated()) {
                     decreaseAllTriggers();
                     triggerCompleted();
+                    
                 }
                 break;
             case Join.TYPE_DISCRIMINATOR :
@@ -119,7 +128,7 @@ public class JoinInstance extends NodeInstanceImpl {
             case Join.TYPE_OR :
                 NodeInstanceContainer nodeInstanceContainer = (NodeInstanceContainer) getNodeInstanceContainer();
                 boolean activePathExists = existsActiveDirectFlow(nodeInstanceContainer, getJoin());
-                if (!activePathExists) {
+                if (!activePathExists ) {
                     triggerCompleted();
                 }
                 break;
@@ -151,21 +160,42 @@ public class JoinInstance extends NodeInstanceImpl {
         }
     }
     
-    private boolean existsActiveDirectFlow(NodeInstanceContainer nodeInstanceContainer, Node lookFor) {
+    private boolean existsActiveDirectFlow(NodeInstanceContainer nodeInstanceContainer, final Node lookFor) {
         boolean activeDirectPathExists = false;
         
-        Collection<NodeInstance> activeNodeInstances = nodeInstanceContainer.getNodeInstances();
+        Collection<NodeInstance> activeNodeInstancesOrig = nodeInstanceContainer.getNodeInstances();
+        List<NodeInstance> activeNodeInstances = new ArrayList<NodeInstance>(activeNodeInstancesOrig);
+        // sort active instances in the way that lookFor nodeInstance will be last to not finish too early
+        Collections.sort(activeNodeInstances, new Comparator<NodeInstance>() {
+
+            @Override
+            public int compare(NodeInstance o1, NodeInstance o2) {
+                if (o1.getNodeId() == lookFor.getId()) {
+                    return 1;
+                } else if (o2.getNodeId() == lookFor.getId()) {
+                    return -1;
+                }
+                return 0;
+            }
+        });
         Set<Long> vistedNodes = new HashSet<Long>();
-        for (NodeInstance nodeInstance : activeNodeInstances) {
+        for (NodeInstance nodeInstance : activeNodeInstances) {              
             if (nodeInstance instanceof NodeInstanceContainer) {
                 boolean nestedCheck = existsActiveDirectFlow((NodeInstanceContainer) nodeInstance, lookFor);
                 if (nestedCheck) {
                     return true;
                 }
             }
-            
-            Node node = nodeInstance.getNode();
+            if (((org.jbpm.workflow.instance.NodeInstance)nodeInstance).getLevel() != ((org.jbpm.workflow.instance.NodeInstanceContainer)getNodeInstanceContainer()).getCurrentLevel()) {
+                continue;
+            }
+            Node node = nodeInstance.getNode();            
             vistedNodes.add(node.getId());
+            
+            if (hasLoop(node, lookFor)) {
+                continue;
+            }
+            
             activeDirectPathExists = checkNodes(vistedNodes, node, lookFor);
             if (activeDirectPathExists) {
                 return true;
@@ -174,9 +204,40 @@ public class JoinInstance extends NodeInstanceImpl {
         
         return activeDirectPathExists;
     }
+    
+    protected boolean hasLoop(Node startAt, final Node lookFor) {
+        Set<Long> nodes = new HashSet<Long>();
+        
+        nodes = collectCompletedNodes(startAt, lookFor, nodes);
+        
+        if (nodes.contains(startAt.getId())) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    protected Set<Long> collectCompletedNodes(Node startAt, final Node lookFor, Set<Long> comletedNodes) {
+        if(startAt == null || startAt.getId() == lookFor.getId()) {
+            return Collections.emptySet();
+        }
+        
+        
+        List<Connection> connections = startAt.getIncomingConnections(org.jbpm.workflow.core.Node.CONNECTION_DEFAULT_TYPE);
+        for (Connection conn : connections) {
+            Node prevNode = conn.getFrom();
+            
+            if (prevNode == null || comletedNodes.contains(prevNode.getId())) {
+                continue;
+            }
+            comletedNodes.add(prevNode.getId());
+            collectCompletedNodes(prevNode, lookFor, comletedNodes);
+        }
+        
+        return comletedNodes;
+    }
 
     private boolean checkNodes(Set<Long> vistedNodes, Node currentNode, Node lookFor) {
-        
         List<Connection> connections = currentNode.getOutgoingConnections(org.jbpm.workflow.core.Node.CONNECTION_DEFAULT_TYPE);
         
         for (Connection conn : connections) {
