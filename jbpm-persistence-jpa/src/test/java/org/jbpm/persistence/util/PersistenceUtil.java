@@ -176,7 +176,8 @@ public class PersistenceUtil {
 
         pds.setClassName(dsProps.getProperty("className"));
 
-        pds.setMaxPoolSize(Integer.parseInt(dsProps.getProperty("maxPoolSize")));
+        //pds.setMaxPoolSize(Integer.parseInt(dsProps.getProperty("maxPoolSize")));
+        pds.setMaxPoolSize(2);
         pds.setAllowLocalTransactions(Boolean.parseBoolean(dsProps.getProperty("allowLocalTransactions")));
         for (String propertyName : new String[] { "user", "password" }) {
             pds.getDriverProperties().put(propertyName, dsProps.getProperty(propertyName));

@@ -53,7 +53,6 @@ import org.kie.internal.task.api.model.TaskEvent;
 public class SynchronizedTaskService 
             implements InternalTaskService, EventService<TaskLifeCycleEventListener> {
 	
-	
 	private Object ksession;
 	private InternalTaskService taskService;
 	
@@ -65,7 +64,6 @@ public class SynchronizedTaskService
 	    }
 		this.taskService = taskService;
 	}
-
 
     @Override
     public void activate(long taskId, String userId) {
