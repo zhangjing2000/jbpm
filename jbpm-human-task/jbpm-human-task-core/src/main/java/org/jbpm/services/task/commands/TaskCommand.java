@@ -50,7 +50,7 @@ public abstract class TaskCommand<T> implements GenericCommand<T> {
     protected String userId;
     
     @XmlElement(name="group-id")
-    protected List<String> groupsIds;
+    protected List<String> groupIds;
     
     @XmlElement(name="target-entity-id")
     @XmlSchemaType(name="string")
@@ -60,31 +60,31 @@ public abstract class TaskCommand<T> implements GenericCommand<T> {
         return this.taskId;
     }
 
-    public void setTaskId(Long taskId) {
+    public final void setTaskId(Long taskId) {
         this.taskId = taskId;
     }
 
-    public String getUserId() {
+    public final String getUserId() {
         return userId;
     }
 
-    public void setUserId(String userId) {
+    public final void setUserId(String userId) {
         this.userId = userId;
     }
 
-    public List<String> getGroupsIds() {
-        return this.groupsIds;
+    public final List<String> getGroupsIds() {
+        return this.groupIds;
     }
 
-    public void setGroupsIds(List<String> groupsIds) {
-        this.groupsIds = groupsIds;
+    public final void setGroupsIds(List<String> groupsIds) {
+        this.groupIds = groupsIds;
     }
 
-    public String getTargetEntityId() {
+    public final String getTargetEntityId() {
         return this.targetEntityId;
     }
 
-    public void setTargetEntityId(String targetEntityId) {
+    public final void setTargetEntityId(String targetEntityId) {
         this.targetEntityId = targetEntityId;
     }
 }

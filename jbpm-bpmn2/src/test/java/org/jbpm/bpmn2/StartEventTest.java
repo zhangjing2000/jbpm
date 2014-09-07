@@ -15,6 +15,7 @@ limitations under the License.*/
 
 package org.jbpm.bpmn2;
 
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,8 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.drools.core.process.instance.impl.WorkItemImpl;
+import org.drools.core.util.IoUtils;
 import org.jbpm.bpmn2.objects.Person;
 import org.jbpm.bpmn2.objects.TestWorkItemHandler;
+import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -38,10 +41,12 @@ import org.kie.api.KieServices;
 import org.kie.api.builder.KieRepository;
 import org.kie.api.event.process.DefaultProcessEventListener;
 import org.kie.api.event.process.ProcessStartedEvent;
+import org.kie.api.io.Resource;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.kie.api.runtime.process.WorkItem;
+import org.kie.internal.io.ResourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,11 +111,12 @@ public class StartEventTest extends JbpmBpmn2TestCase {
             }
         });
         System.out.println("About to start ###### " + new Date());
-        Thread.sleep(2000);
+        // first wait two seconds as that is the initial delay configured on the process
+        Thread.sleep(1800);
         
         assertEquals(0, list.size());
-        
-        Thread.sleep(2200);
+        // then wait 5 times 5oo ms as that is period configured on the process
+        Thread.sleep(2500);
         ksession.dispose();
         assertEquals(5, getNumberOfProcessInstances("Minimal"));
 
@@ -131,6 +137,34 @@ public class StartEventTest extends JbpmBpmn2TestCase {
             Thread.sleep(500);
         }
         assertEquals(5, getNumberOfProcessInstances("Minimal"));
+
+    }
+    
+    @Test
+    public void testTimerStartDateISO() throws Exception {
+    	        
+        byte[] content = IoUtils.readBytesFromInputStream(this.getClass().getResourceAsStream("/BPMN2-TimerStartDate.bpmn2"));
+        String processContent = new String(content, "UTF-8");
+        
+        DateTime now = new DateTime(System.currentTimeMillis());
+        now = now.plus(2000);       
+        
+        processContent = processContent.replaceFirst("#\\{date\\}", now.toString());
+        Resource resource = ResourceFactory.newReaderResource(new StringReader(processContent));
+        resource.setSourcePath("/BPMN2-TimerStartDate.bpmn2");
+        resource.setTargetPath("/BPMN2-TimerStartDate.bpmn2");
+        KieBase kbase = createKnowledgeBaseFromResources(resource);
+    	
+        ksession = createKnowledgeSession(kbase);
+        final List<Long> list = new ArrayList<Long>();
+        ksession.addEventListener(new DefaultProcessEventListener() {
+            public void afterProcessStarted(ProcessStartedEvent event) {
+                list.add(event.getProcessInstance().getId());
+            }
+        });
+        assertEquals(0, list.size());
+        Thread.sleep(3000);
+        assertEquals(1, list.size());
 
     }
 
@@ -390,7 +424,7 @@ public class StartEventTest extends JbpmBpmn2TestCase {
 
         assertEquals(0, list.size());
         for (int i = 0; i < 2; i++) {
-            Thread.sleep(600);
+            Thread.sleep(1200);
         }
 
         assertEquals(2, list.size());
